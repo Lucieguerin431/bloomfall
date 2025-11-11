@@ -1,7 +1,7 @@
 import { createNoise2D } from 'simplex-noise';
 
 export function generateHeight(width, height, scale = 0.1, type = 'perlin') {
-    const noise2D = createNoise2D(); // ✔️ ceci fonctionne avec Vite
+    const noise2D = createNoise2D(); 
 
     const data = [];
 

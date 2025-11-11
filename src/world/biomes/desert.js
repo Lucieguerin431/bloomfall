@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { generateHeight } from '../terrainUtils.js';
+import { generateHeight } from "./terrainUtils/terrainUtils.js";
 
 export function createDesertBiome({ size = 50, position = { x: 0, z: 0 } } = {}) {
     const segments = 50;
