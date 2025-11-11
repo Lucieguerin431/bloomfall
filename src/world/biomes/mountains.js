@@ -1,27 +1,25 @@
-import { Mesh, PlaneGeometry, MeshStandardMaterial } from 'three';
+import * as THREE from 'three';
+import { generateHeight } from '../terrainUtils.js';
 
-export function createMountainsBiome({ size, position }) {
+export function createMountainsBiome({ size = 50, position = { x: 0, z: 0 } } = {}) {
+    const segments = 50;
+    const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+    const heights = generateHeight(segments + 1, segments + 1, 0.05, 'fractal');
 
-  const geo = new PlaneGeometry(size, size, 100, 100);
+    for (let i = 0; i < geometry.attributes.position.count; i++) {
+        const ix = i % (segments + 1);
+        const iy = Math.floor(i / (segments + 1));
+        geometry.attributes.position.setZ(i, Math.pow(heights[ix][iy], 2) * 20); // pics montagneux
+    }
+    geometry.computeVertexNormals();
 
-  // Élévation simple
-  for (let i = 0; i < geo.attributes.position.count; i++) {
-    const y = Math.random() * 6 +2;   // plus tard : Mandelbulb 
-    geo.attributes.position.setY(i, y);
-  }
-  geo.computeVertexNormals();
+    const material = new THREE.MeshStandardMaterial({ color: 0x8B8B8B, flatShading: true });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(position.x, 0, position.z);
 
-  const mat = new MeshStandardMaterial({
-    color: 0x8899cc,
-    flatShading: true
-  });
-
-  const mesh = new Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(position.x, 0, position.z);
-
-  return {
-    mesh,
-    update(delta) {}
-  };
+    return {
+        mesh,
+        update(delta) {}
+    };
 }
