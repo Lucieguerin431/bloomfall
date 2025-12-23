@@ -1,3 +1,5 @@
+//PAS UTILISE
+
 function mandelbulbValue(x, z, scale = 0.015, power = 8) {
 
     let zx = x * scale;
