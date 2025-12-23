@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TerrainGenerator, createBloomfallTerrain } from './world/TerrainGenerator.js';
 import { VegetationManager } from './world/entities/systems/lsystem/lsystem.js'
+import { BoidsSystem, CreaturePresets } from './world/entities/boids/boidSystem.js';
 
 /**
  * Configuration de la scène Bloomfall
@@ -15,6 +16,7 @@ class BloomfallScene {
     this.terrain = null;
     this.terrainGenerator = null;
     this.vegetationManager = null;
+    this.boidsSystem = null;
     
     this.init();
     this.animate();
@@ -55,34 +57,27 @@ class BloomfallScene {
     this.setupLights();
 
     // Terrain avec configuration personnalisée
-    // OPTION 1 : Configuration manuelle
     const terrainConfig = {
       size: 200,
       resolution: 128,
-      heightScale: 50,           // ✨ Plus haut !
+      heightScale: 50,
       seed: Math.random(),
       
       // Montagnes plus hautes et prononcées
       mountainOctaves: 7,
       mountainPersistence: 0.5,
       mountainLacunarity: 2.3,
-      mountainExponent: 2.2,     // Pics plus accentués
-      mountainBaseHeight: 0.5,   // ✨ Altitude de base élevée !
+      mountainExponent: 2.2,
+      mountainBaseHeight: 0.5,
       
       // Plaines douces
       plainsOctaves: 4,
       plainsPersistence: 0.6,
       plainsLacunarity: 2.0,
-      plainsHeightScale: 0.25,   // Plus plates pour le contraste
+      plainsHeightScale: 0.25,
       
       transitionWidth: 40,
     };
-
-    // OPTION 2 : Utiliser un preset (décommentez pour utiliser)
-    // import { TerrainPresets } from './TerrainPresets.js';
-    // const terrainConfig = TerrainPresets.highMountains;
-    // OU
-    // const terrainConfig = TerrainPresets.extremeMountains;
 
     const result = createBloomfallTerrain(this.scene, terrainConfig);
     this.terrain = result.terrain;
@@ -91,8 +86,8 @@ class BloomfallScene {
     // 🌲 Ajouter la végétation dans les plaines
     this.setupVegetation();
 
-    // Ajouter une grille de référence (optionnel)
-    // this.addDebugGrid();
+    // 🐝 Ajouter les boids (lucioles)
+    this.setupBoids();
 
     // Gestion du redimensionnement
     window.addEventListener('resize', () => this.onWindowResize());
@@ -109,23 +104,38 @@ class BloomfallScene {
     
     // Peupler les plaines avec de la végétation
     this.vegetationManager.populate({
-      numTrees: 80,        // Nombre d'arbres
-      numBushes: 120,      // Nombre de buissons
-      numGrass: 250,       // Nombre d'herbes
-      numFlowers: 150,     // Nombre de fleurs
-      minDistanceFromMountains: 10, // Distance min des montagnes (en unités)
+      numTrees: 80,
+      numBushes: 120,
+      numGrass: 250,
+      numFlowers: 150,
+      minDistanceFromMountains: 10,
     });
     
     console.log('✅ Végétation générée !');
   }
 
+  setupBoids() {
+    console.log('🐝 Création des boids (lucioles)...');
+    
+    // Créer le système de boids avec le preset par défaut
+    // Presets disponibles : default, tight, loose, fast
+    this.boidsSystem = new BoidsSystem(
+      this.scene,
+      this.terrainGenerator,
+      50,                    // Nombre de boids
+      CreaturePresets.default   // Configuration
+    );
+    
+    console.log('✅ Boids actifs !');
+  }
+
   setupLights() {
-    // Lumière ambiante
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // Lumière ambiante plus faible pour mieux voir les lucioles
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
 
     // Lumière directionnelle (soleil)
-    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
     sunLight.position.set(50, 100, 50);
     sunLight.castShadow = true;
     
@@ -142,15 +152,9 @@ class BloomfallScene {
     this.scene.add(sunLight);
 
     // Lumière d'appoint pour les zones sombres
-    const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.2);
     fillLight.position.set(-50, 50, -50);
     this.scene.add(fillLight);
-  }
-
-  addDebugGrid() {
-    const gridHelper = new THREE.GridHelper(200, 40, 0x444444, 0x888888);
-    gridHelper.position.y = 0.1;
-    this.scene.add(gridHelper);
   }
 
   displayTerrainInfo() {
@@ -169,22 +173,25 @@ class BloomfallScene {
     
     const config = this.terrainGenerator.config;
     infoDiv.innerHTML = `
-      <strong>Bloomfall - Terrain Info</strong><br>
+      <strong>🌍 Bloomfall - Terrain Info</strong><br>
       <hr style="margin: 8px 0; border-color: #555;">
       Taille: ${config.size}m x ${config.size}m<br>
       Résolution: ${config.resolution} x ${config.resolution}<br>
       Seed: ${config.seed.toFixed(6)}<br>
       <br>
-      <strong>Montagnes (centre)</strong><br>
+      <strong>🏔️ Montagnes (centre)</strong><br>
       Hauteur max: ${config.heightScale}m<br>
       Octaves: ${config.mountainOctaves}<br>
       <br>
-      <strong>Plaines-Forêts (périphérie)</strong><br>
+      <strong>🌲 Plaines-Forêts (périphérie)</strong><br>
       Hauteur: ${(config.heightScale * config.plainsHeightScale).toFixed(1)}m<br>
       Octaves: ${config.plainsOctaves}<br>
       <br>
-      <strong>Végétation</strong><br>
+      <strong>🌱 Végétation</strong><br>
       Plantes: ${this.vegetationManager ? this.vegetationManager.vegetation.length : 0}<br>
+      <br>
+      <strong>🐝 Boids (lucioles)</strong><br>
+      Nombre: ${this.boidsSystem ? this.boidsSystem.getStatistics().total : 0}<br>
       <br>
       <em>Utilisez la souris pour naviguer</em>
     `;
@@ -204,9 +211,10 @@ class BloomfallScene {
     // Mise à jour des contrôles
     this.controls.update();
 
-    // Animation du soleil (optionnel)
-    // const time = Date.now() * 0.0001;
-    // sunLight.position.x = Math.sin(time) * 100;
+    // Mise à jour des boids
+    if (this.boidsSystem) {
+      this.boidsSystem.update(0.016); // ~60 FPS
+    }
 
     this.renderer.render(this.scene, this.camera);
   }
