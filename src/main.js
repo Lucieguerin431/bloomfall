@@ -173,27 +173,7 @@ class BloomfallScene {
     
     const config = this.terrainGenerator.config;
     infoDiv.innerHTML = `
-      <strong>🌍 Bloomfall - Terrain Info</strong><br>
-      <hr style="margin: 8px 0; border-color: #555;">
-      Taille: ${config.size}m x ${config.size}m<br>
-      Résolution: ${config.resolution} x ${config.resolution}<br>
-      Seed: ${config.seed.toFixed(6)}<br>
-      <br>
-      <strong>🏔️ Montagnes (centre)</strong><br>
-      Hauteur max: ${config.heightScale}m<br>
-      Octaves: ${config.mountainOctaves}<br>
-      <br>
-      <strong>🌲 Plaines-Forêts (périphérie)</strong><br>
-      Hauteur: ${(config.heightScale * config.plainsHeightScale).toFixed(1)}m<br>
-      Octaves: ${config.plainsOctaves}<br>
-      <br>
-      <strong>🌱 Végétation</strong><br>
-      Plantes: ${this.vegetationManager ? this.vegetationManager.vegetation.length : 0}<br>
-      <br>
-      <strong>🐝 Boids (lucioles)</strong><br>
-      Nombre: ${this.boidsSystem ? this.boidsSystem.getStatistics().total : 0}<br>
-      <br>
-      <em>Utilisez la souris pour naviguer</em>
+      
     `;
     
     document.body.appendChild(infoDiv);
@@ -207,7 +187,7 @@ class BloomfallScene {
 
   animate() {
     requestAnimationFrame(() => this.animate());
-
+    
     // Mise à jour des contrôles
     this.controls.update();
 

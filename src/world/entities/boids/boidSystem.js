@@ -6,7 +6,7 @@ import { Creature } from './boid.js';
  * Adapté pour le monde Bloomfall
  */
 export class BoidsSystem {
-  constructor(scene, terrainGenerator, count = 50, options = {}) {
+  constructor(scene, terrainGenerator, count = 1000, options = {}) {
     this.scene = scene;
     this.terrainGenerator = terrainGenerator;
     this.creatures = [];
@@ -22,7 +22,7 @@ export class BoidsSystem {
     
     // Options pour les créatures
     this.creatureOptions = {
-      maxSpeed: options.maxSpeed || 0.15,
+      maxSpeed: options.maxSpeed || 0.30,
       maxForce: options.maxForce || 0.02,
       size: options.size || 0.3,
       lightIntensity: options.lightIntensity || 8.0,

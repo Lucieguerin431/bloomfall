@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Classe Creature : Représente une créature lumineuse (luciole) adaptée pour Bloomfall
@@ -7,17 +7,19 @@ import * as THREE from 'three';
 export class Creature {
   constructor(terrainGenerator, options = {}) {
     this.terrainGenerator = terrainGenerator;
-    
+
     // Paramètres configurables avec des valeurs par défaut
     this.maxSpeed = options.maxSpeed || 0.1;
     this.maxForce = options.maxForce || 0.01;
-    this.size = options.size || 0.08;
-    this.lightIntensity = options.lightIntensity || 5.0;
-    this.lightRange = options.lightRange || 4.0;
-    
+    this.size = options.size || 0.5; // AUGMENTÉ pour être visible
+    this.lightIntensity = options.lightIntensity || 8.0; // AUGMENTÉ
+    this.lightRange = options.lightRange || 10.0; // AUGMENTÉ
+    this.isAlive = true;
+    this.energy = 100;
+
     // Bounds basé sur la taille du terrain
     const terrainSize = terrainGenerator.config.size;
-    this.bounds = (terrainSize / 2) - 10; // Marge de sécurité
+    this.bounds = terrainSize / 2 - 10;
 
     // Position initiale aléatoire dans les plaines
     this.position = this.getRandomPlainsPosition();
@@ -25,7 +27,7 @@ export class Creature {
     // Vitesse initiale aléatoire (principalement horizontale)
     this.velocity = new THREE.Vector3(
       (Math.random() - 0.5) * 0.05,
-      0, // Pas de mouvement vertical initial
+      0,
       (Math.random() - 0.5) * 0.05
     );
 
@@ -33,59 +35,70 @@ export class Creature {
     this.acceleration = new THREE.Vector3();
 
     // Hauteur au-dessus du sol
-    this.heightOffset = options.heightOffset || 1.0;
+    this.heightOffset = options.heightOffset || 3.0; // AUGMENTÉ pour être bien visible
 
-    // Couleur aléatoire dans les tons bleutés/vert (comme votre code original)
-    const hue = options.hue !== undefined ? options.hue : 0.5 + Math.random() * 0.2;
-    this.color = new THREE.Color().setHSL(hue, 0.8, 0.5);
+    // Couleur aléatoire dans les tons chauds/lumineux
+    const hue = options.hue !== undefined ? options.hue : 0.1 + Math.random() * 0.15;
+    this.color = new THREE.Color().setHSL(hue, 1.0, 0.6);
 
     // Création de la sphère pour représenter le Creature (luciole)
     this.mesh = this.createMesh(this.color, this.size);
 
     // Création de la lumière ponctuelle pour l'effet de "glow"
-    this.light = this.createLight(this.color, this.lightIntensity, this.lightRange);
+    this.light = this.createLight(
+      this.color,
+      this.lightIntensity,
+      this.lightRange
+    );
 
     // Stocke le temps initial pour le scintillement
     this.timeOffset = Math.random() * 1000;
+    console.log("✨ Boid créé à :", this.mesh.position.toArray());
+  }
+
+  dispose() {
+    if (this.mesh.parent) {
+      this.mesh.parent.remove(this.mesh);
+    }
+    if (this.mesh.geometry) {
+      this.mesh.geometry.dispose();
+    }
+    if (this.mesh.material) {
+      if (Array.isArray(this.mesh.material)) {
+        this.mesh.material.forEach(m => m.dispose());
+      } else {
+        this.mesh.material.dispose();
+      }
+    }
   }
 
   /**
    * Obtient une position aléatoire dans les plaines
    */
-  getRandomPlainsPosition() {
-    const maxAttempts = 50;
-    
-    for (let i = 0; i < maxAttempts; i++) {
-      const x = (Math.random() - 0.5) * this.bounds * 2;
-      const z = (Math.random() - 0.5) * this.bounds * 2;
-      
-      const biome = this.terrainGenerator.getBiomeAt(x, z);
-      
-      if (biome === 'plains') {
-        const y = this.terrainGenerator.getHeightAt(x, z) + this.heightOffset;
-        return new THREE.Vector3(x, y, z);
-      }
-    }
-    
-    // Fallback : position centrale
-    const y = this.terrainGenerator.getHeightAt(0, 0) + this.heightOffset;
-    return new THREE.Vector3(0, y, 0);
-  }
+getRandomPlainsPosition() {
+  const x = (Math.random() - 0.5) * this.bounds * 2;
+  const z = (Math.random() - 0.5) * this.bounds * 2;
+  const y = 10; // HAUTEUR FIXE TEMPORAIRE
+  
+  console.log(`🎯 Position fixe: x=${x.toFixed(1)}, y=${y}, z=${z.toFixed(1)}`);
+  return new THREE.Vector3(x, y, z);
+}
 
   /**
-   * Crée le mesh (sphère) du Creature.
+   * Crée le mesh (sphère) du Creature - CORRIGÉ
    */
   createMesh(color, size) {
     const geometry = new THREE.SphereGeometry(size, 16, 16);
     const material = new THREE.MeshStandardMaterial({
       color: color,
       emissive: color,
-      emissiveIntensity: 3.0, // Intensité émissive initiale
-      metalness: 0.0,
-      roughness: 0.3,
+      emissiveIntensity: 2.0, // Brille intensément
+      metalness: 0.3,
+      roughness: 0.4,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.copy(this.position);
+    mesh.castShadow = true;
     return mesh;
   }
 
@@ -95,7 +108,7 @@ export class Creature {
   createLight(color, intensity, range) {
     const light = new THREE.PointLight(color, intensity, range);
     light.position.copy(this.position);
-    light.castShadow = false; // Désactive les ombres pour optimiser les perfs
+    light.castShadow = false;
     return light;
   }
 
@@ -107,7 +120,10 @@ export class Creature {
     this.velocity.add(this.acceleration);
 
     // Limite la vitesse maximale (seulement en XZ)
-    const horizontalVelocity = new THREE.Vector2(this.velocity.x, this.velocity.z);
+    const horizontalVelocity = new THREE.Vector2(
+      this.velocity.x,
+      this.velocity.z
+    );
     if (horizontalVelocity.length() > this.maxSpeed) {
       horizontalVelocity.setLength(this.maxSpeed);
       this.velocity.x = horizontalVelocity.x;
@@ -134,9 +150,9 @@ export class Creature {
     this.light.position.copy(this.position);
 
     // Effet de scintillement (variation périodique de l'intensité)
-    const time = Date.now() * 0.001; // Convertit en secondes
-    const pulse = Math.sin(time * 2 + this.timeOffset); // Fréquence ajustable
-    this.light.intensity = this.lightIntensity + pulse * 2.0;
+    const time = Date.now() * 0.001;
+    const pulse = Math.sin(time * 2 + this.timeOffset);
+    this.light.intensity = this.lightIntensity + pulse * 3.0;
     this.mesh.material.emissiveIntensity = 2.0 + pulse * 1.5;
   }
 
@@ -144,12 +160,22 @@ export class Creature {
    * Ajuste la hauteur du Creature pour qu'il suive le terrain
    */
   adjustToTerrain() {
-    const terrainHeight = this.terrainGenerator.getHeightAt(this.position.x, this.position.z);
+    let terrainHeight = this.terrainGenerator.getHeightAt(
+      this.position.x,
+      this.position.z
+    );
+
+    if (terrainHeight === undefined || isNaN(terrainHeight)) {
+      terrainHeight = 0;
+    }
+
     const targetY = terrainHeight + this.heightOffset;
-    
-    // Interpolation douce vers la hauteur cible
     const smoothing = 0.1;
-    this.position.y += (targetY - this.position.y) * smoothing;
+    const diffY = targetY - this.position.y;
+
+    if (!isNaN(diffY)) {
+      this.position.y += diffY * smoothing;
+    }
   }
 
   /**
@@ -164,8 +190,7 @@ export class Creature {
    */
   borders() {
     const margin = 5;
-    
-    // Bordures X
+
     if (this.position.x < -this.bounds + margin) {
       const force = new THREE.Vector3(this.maxForce, 0, 0);
       this.applyForce(force);
@@ -173,8 +198,7 @@ export class Creature {
       const force = new THREE.Vector3(-this.maxForce, 0, 0);
       this.applyForce(force);
     }
-    
-    // Bordures Z
+
     if (this.position.z < -this.bounds + margin) {
       const force = new THREE.Vector3(0, 0, this.maxForce);
       this.applyForce(force);
@@ -188,16 +212,20 @@ export class Creature {
    * Évite les zones de montagnes
    */
   avoidMountains() {
-    const biome = this.terrainGenerator.getBiomeAt(this.position.x, this.position.z);
-    
-    if (biome === 'mountain' || biome === 'transition') {
-      // Force pour s'éloigner du centre (où sont les montagnes)
+    const biome = this.terrainGenerator.getBiomeAt(
+      this.position.x,
+      this.position.z
+    );
+
+    if (biome === "mountain" || biome === "transition") {
       const awayFromCenter = new THREE.Vector3(
         this.position.x,
         0,
         this.position.z
-      ).normalize().multiplyScalar(this.maxForce * 1.5);
-      
+      )
+        .normalize()
+        .multiplyScalar(this.maxForce * 1.5);
+
       this.applyForce(awayFromCenter);
     }
   }
