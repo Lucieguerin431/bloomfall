@@ -6,28 +6,20 @@ export class CreatureSystem {
   constructor(scene, terrainGenerator, config = {}) {
     this.scene = scene;
     this.terrainGenerator = terrainGenerator;
-    
-    // Config par défaut
     this.config = Object.assign({
       populationSize: 24,
       mutationRate: 0.08,
-      worldSize: 200, // Taille de la map Bloomfall
+      worldSize: 200, 
       foodCount: 40
     }, config);
 
     this.creatures = [];
     this.foods = [];
-    
-    // Groupes Three.js
     this.mainGroup = new THREE.Group();
     this.foodGroup = new THREE.Group();
     this.scene.add(this.mainGroup);
     this.scene.add(this.foodGroup);
-
-    // Moteur génétique
     this.genetic = new Genetic(this.config.populationSize, 10);
-
-    // Initialisation
     this.initLevel();
   }
 
@@ -36,170 +28,96 @@ export class CreatureSystem {
     this.createGeneration();
   }
 
-  // --- Gestion de la Nourriture ---
   spawnFood(count) {
-    // Nettoyage visuel ancienne nourriture
-    while(this.foodGroup.children.length > 0){ 
-      this.foodGroup.remove(this.foodGroup.children[0]); 
-    }
+    while(this.foodGroup.children.length > 0) this.foodGroup.remove(this.foodGroup.children[0]); 
     this.foods = [];
-
     const geom = new THREE.SphereGeometry(0.4, 8, 8);
     const mat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0x551100 });
-
     for(let i=0; i<count; i++) {
       const pos = this.getRandomPositionOnTerrain();
       const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.copy(pos);
-      mesh.position.y += 0.5; // Un peu au dessus du sol
-      
+      mesh.position.copy(pos).y += 0.5;
       this.foodGroup.add(mesh);
       this.foods.push({ mesh, x: pos.x, z: pos.z, active: true });
     }
   }
 
-  // --- Gestion des Créatures ---
   createGeneration() {
-    // Nettoyage créatures précédentes
-    while(this.mainGroup.children.length > 0){
-        this.mainGroup.remove(this.mainGroup.children[0]);
-    }
+    while(this.mainGroup.children.length > 0) this.mainGroup.remove(this.mainGroup.children[0]);
     this.creatures = [];
-
-    const individuals = this.genetic.individuals;
-
-    individuals.forEach((ind, index) => {
-      // Création instance (mesh + cerveau)
+    this.genetic.individuals.forEach((ind, index) => {
       const creature = createCreatureFromGenes(ind.genes, ind.brainGenome);
-      
-      // Position aléatoire sur le terrain
       const pos = this.getRandomPositionOnTerrain();
-      creature.x = pos.x;
-      creature.y = pos.z; // Attention: creature.js utilise Y comme axe Z (profondeur)
-      
-      // Ajustement visuel
+      creature.x = pos.x; creature.y = pos.z; 
       creature.mesh.position.set(pos.x, pos.y, pos.z);
-      
-      // Stockage
       this.mainGroup.add(creature.mesh);
-      this.creatures.push({ 
-        logic: creature, 
-        mesh: creature.mesh, 
-        index: index,
-        fitness: 0 
-      });
-      
-      // Reset fitness génétique
+      this.creatures.push({ logic: creature, mesh: creature.mesh, index: index, fitness: 0 });
       ind.fitness = 0;
     });
   }
 
-  // --- Boucle Principale ---
   update(dt) {
+    const halfSize = (this.config.worldSize / 2) - 2; // Marge de sécurité
     this.creatures.forEach(c => {
-      const logic = c.logic;
-      const mesh = c.mesh;
-
-      // 1. Trouver nourriture la plus proche
-      const target = this.getNearestFood(mesh.position.x, mesh.position.z);
-      
-      // 2. Inputs du cerveau
+      const { logic, mesh } = c;
+      const target = this.getNearestFood(logic.x, logic.y);
       logic.distanceFood = target ? target.dist : 100;
-      logic.distanceWall = 0; // On simplifie pour l'instant (ou calcul distance centre map)
 
-      // 3. Update Cerveau & Physique (interne)
-      logic.update(dt * 20); // *20 pour accélérer un peu la simulation
+      logic.update(dt * 20);
 
-      // 4. Manger ?
-      if (target && target.dist < 1.5) {
-        this.eatFood(target.index, c);
-      }
+      // --- CONSTRAINT: BLOCAGE AUX BORDURES ---
+      logic.x = Math.max(-halfSize, Math.min(halfSize, logic.x));
+      logic.y = Math.max(-halfSize, Math.min(halfSize, logic.y));
 
-      // 5. Appliquer la hauteur du terrain (Raycast like)
+      if (target && target.dist < 1.5) this.eatFood(target.index, c);
+
       const groundHeight = this.terrainGenerator.getHeightAt(logic.x, logic.y);
-      
-      // Mise à jour visuelle Three.js
-      // creature.js utilise logic.y pour la profondeur (Z), et logic.x pour X
       mesh.position.set(logic.x, groundHeight, logic.y);
-      
-      // Orientation correcte sur la pente
       mesh.rotation.y = -logic.angle;
 
-      // Gestion de l'énergie (mort ?)
-      if (logic.energy <= 0) {
-        mesh.visible = false; // Ou scaling à 0
-      }
+      if (logic.energy <= 0) mesh.visible = false;
     });
   }
 
   getNearestFood(x, z) {
-    let bestDist = Infinity;
-    let bestIdx = -1;
-    
+    let bestDist = Infinity; let bestIdx = -1;
     for(let i=0; i<this.foods.length; i++) {
       if (!this.foods[i].active) continue;
-      
-      const dx = this.foods[i].x - x;
-      const dz = this.foods[i].z - z;
-      const d = Math.sqrt(dx*dx + dz*dz);
-      
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
+      const d = Math.sqrt(Math.pow(this.foods[i].x - x, 2) + Math.pow(this.foods[i].z - z, 2));
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
     }
     return bestIdx !== -1 ? { dist: bestDist, index: bestIdx } : null;
   }
 
   eatFood(foodIndex, creatureObj) {
     const f = this.foods[foodIndex];
-    f.active = false;
-    f.mesh.visible = false;
-    
-    // Récompense
-    creatureObj.logic.energy += 30; // Gain d'énergie
-    creatureObj.fitness += 1;       // Score pour la selection naturelle
+    f.active = false; f.mesh.visible = false;
+    creatureObj.logic.energy += 30;
+    creatureObj.fitness += 1;
     this.genetic.individuals[creatureObj.index].fitness = creatureObj.fitness;
-
-    // Respawn de la nourriture ailleurs pour garder le monde dynamique
     const newPos = this.getRandomPositionOnTerrain();
-    f.x = newPos.x;
-    f.z = newPos.z;
+    f.x = newPos.x; f.z = newPos.z;
     f.mesh.position.set(newPos.x, newPos.y + 0.5, newPos.z);
-    f.mesh.visible = true;
-    f.active = true;
+    f.mesh.visible = true; f.active = true;
   }
 
   nextGeneration() {
-    // Sélection des meilleurs (ceux qui ont mangé)
     const selection = new Set();
-    this.creatures.forEach(c => {
-      if (c.fitness > 0) selection.add(c.index);
-    });
-
-    // Evolution
+    this.creatures.forEach(c => { if (c.fitness > 0) selection.add(c.index); });
     this.genetic.nextGeneration(selection);
-    
-    // Reset visuel
     this.createGeneration();
-    console.log(`Génération ${this.genetic.generation} lancée !`);
   }
 
   getRandomPositionOnTerrain() {
-    // On essaye de trouver une position dans les "Plains"
     const range = this.config.worldSize / 2 - 10;
-    let x, z, y;
-    let biome = '';
-    let attempt = 0;
-    
+    let x, z, y, biome, attempt = 0;
     do {
       x = (Math.random() - 0.5) * 2 * range;
       z = (Math.random() - 0.5) * 2 * range;
       biome = this.terrainGenerator.getBiomeAt(x, z);
       y = this.terrainGenerator.getHeightAt(x, z);
       attempt++;
-    } while (biome === 'mountain' && attempt < 10); // On évite les sommets si possible
-    
+    } while (biome === 'mountain' && attempt < 15);
     return new THREE.Vector3(x, y, z);
   }
 }

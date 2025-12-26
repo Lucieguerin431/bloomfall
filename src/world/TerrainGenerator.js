@@ -181,7 +181,7 @@ export class TerrainGenerator {
     }
     
     // Paramètre d'amplification du centre (vous pouvez l'ajouter à votre config)
-    const centerBoost = this.config.mountainHeightScale || 3.5; 
+    const centerBoost = this.config.mountainHeightScale || 5.5; 
 
     for (let y = 0; y < resolution; y++) {
       for (let x = 0; x < resolution; x++) {

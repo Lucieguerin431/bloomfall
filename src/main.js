@@ -60,9 +60,9 @@ class BloomfallScene {
 
     // 6. Terrain
     const terrainConfig = {
-      size: 200,
+      size: 400,
       resolution: 128,
-      heightScale: 50,
+      heightScale: 100,
       seed: Math.random(),
       mountainOctaves: 7,
       mountainPersistence: 0.5,
