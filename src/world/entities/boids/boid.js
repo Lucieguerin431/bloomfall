@@ -80,12 +80,12 @@ getRandomPlainsPosition() {
   const z = (Math.random() - 0.5) * this.bounds * 2;
   const y = 10; // HAUTEUR FIXE TEMPORAIRE
   
-  console.log(`🎯 Position fixe: x=${x.toFixed(1)}, y=${y}, z=${z.toFixed(1)}`);
+  console.log(`Position fixe: x=${x.toFixed(1)}, y=${y}, z=${z.toFixed(1)}`);
   return new THREE.Vector3(x, y, z);
 }
 
   /**
-   * Crée le mesh (sphère) du Creature - CORRIGÉ
+   * Crée le mesh (sphère) du Creature 
    */
   createMesh(color, size) {
     const geometry = new THREE.SphereGeometry(size, 16, 16);

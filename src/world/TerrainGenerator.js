@@ -176,45 +176,43 @@ export class TerrainGenerator {
     const { resolution, size, heightScale } = this.config;
     const map = new Float32Array(resolution * resolution);
     
-    // Générer la carte de biome si elle n'existe pas
     if (!this.biomeMap) {
       this.generateBiomeMap();
     }
     
+    // Paramètre d'amplification du centre (vous pouvez l'ajouter à votre config)
+    const centerBoost = this.config.mountainHeightScale || 3.5; 
+
     for (let y = 0; y < resolution; y++) {
       for (let x = 0; x < resolution; x++) {
         const idx = y * resolution + x;
-        
-        // Coordonnées normalisées pour le bruit
         const nx = (x / resolution) * 4;
         const ny = (y / resolution) * 4;
         
-        // Hauteur pour les montagnes
         let mountainHeight = this.perlin.fractalNoise(
-          nx,
-          ny,
+          nx, ny,
           this.config.mountainOctaves,
           this.config.mountainPersistence,
           this.config.mountainLacunarity
         );
         
-        // Accentuer les pics montagneux
-        mountainHeight = Math.pow(Math.abs(mountainHeight), this.config.mountainExponent) * 
-                        Math.sign(mountainHeight);
+        // Accentuer les pics
+        mountainHeight = Math.pow(Math.abs(mountainHeight), this.config.mountainExponent) * Math.sign(mountainHeight);
         
-        // Hauteur pour les plaines-forêts (plus douces)
+        // --- APPLICATION DU BOOST CENTRAL ---
+        // On multiplie l'altitude des montagnes par le centerBoost
+        mountainHeight *= centerBoost; 
+
         let plainsHeight = this.perlin.fractalNoise(
-          nx * 0.8,
-          ny * 0.8,
+          nx * 0.8, ny * 0.8,
           this.config.plainsOctaves,
           this.config.plainsPersistence,
           this.config.plainsLacunarity
         );
-        
         plainsHeight *= this.config.plainsHeightScale;
         
-        // Interpoler entre les deux selon la carte de biome
         const biomeFactor = this.biomeMap[idx];
+        // L'interpolation fera le reste : le boost ne s'appliquera qu'au centre (biome montagne)
         const height = mountainHeight * (1 - biomeFactor) + plainsHeight * biomeFactor;
         
         map[idx] = height * heightScale;
