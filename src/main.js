@@ -92,7 +92,7 @@ class BloomfallScene {
   }
 
   setupVegetation() {
-    console.log('🌱 Génération de la végétation...');
+    console.log(' Génération de la végétation...');
     this.vegetationManager = new VegetationManager(this.scene, this.terrainGenerator);
     this.vegetationManager.populate({
       numTrees: 80,
@@ -104,7 +104,7 @@ class BloomfallScene {
   }
 
   setupBoids() {
-    console.log('🐝 Création des boids...');
+    console.log(' Création des boids...');
     this.boidsSystem = new BoidsSystem(
       this.scene,
       this.terrainGenerator,
@@ -115,7 +115,7 @@ class BloomfallScene {
 
   // --- INTÉGRATION ALGOGEN ---
   setupCreatures() {
-    console.log('🧬 Initialisation de la Vie Artificielle...');
+    console.log(' Initialisation de la Vie Artificielle...');
     
     // On passe la scène et le générateur de terrain pour qu'elles marchent au sol
     this.creatureSystem = new CreatureSystem(this.scene, this.terrainGenerator, {
@@ -123,7 +123,7 @@ class BloomfallScene {
         worldSize: 200      // Doit correspondre à la taille du terrain
     });
 
-    console.log('✅ Créatures actives !');
+    console.log(' Créatures actives !');
   }
 
   setupLights() {
@@ -159,7 +159,7 @@ class BloomfallScene {
         padding: '15px', fontFamily: 'monospace', fontSize: '14px',
         borderRadius: '5px', zIndex: '1000'
     });
-    // infoDiv.innerHTML = `...`; // Tu peux remettre tes infos ici si tu veux
+    // infoDiv.innerHTML = `...`; 
     document.body.appendChild(infoDiv);
   }
 

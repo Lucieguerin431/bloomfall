@@ -333,7 +333,7 @@ export class TerrainGenerator {
     // Couleurs pour les différents biomes/altitudes
     const mountainLow = new THREE.Color(0x8B7355);    // Marron rocheux
     const mountainMid = new THREE.Color(0xA0826D);    // Beige pierre
-    const mountainHigh = new THREE.Color(0xD3D3D3);   // Gris clair sommet
+    const mountainHigh = new THREE.Color(0xFFFFFF);   // Gris clair sommet
     
     const plainsGrass = new THREE.Color(0x7EC850);    // Vert herbe
     const plainsDark = new THREE.Color(0x4A7C2F);     // Vert foncé forêt

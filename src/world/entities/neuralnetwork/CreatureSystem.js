@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import Genetic from './genetique.js'; 
-import { createCreatureFromGenes } from './creature.js'; 
+import Genetic from './genetique.js';
+import { createCreatureFromGenes } from './creature.js';
 
 export class CreatureSystem {
   constructor(scene, terrainGenerator, config = {}) {
@@ -9,7 +9,7 @@ export class CreatureSystem {
     this.config = Object.assign({
       populationSize: 24,
       mutationRate: 0.08,
-      worldSize: 200, 
+      worldSize: 200,
       foodCount: 40
     }, config);
 
@@ -29,11 +29,11 @@ export class CreatureSystem {
   }
 
   spawnFood(count) {
-    while(this.foodGroup.children.length > 0) this.foodGroup.remove(this.foodGroup.children[0]); 
+    while (this.foodGroup.children.length > 0) this.foodGroup.remove(this.foodGroup.children[0]);
     this.foods = [];
     const geom = new THREE.SphereGeometry(0.4, 8, 8);
     const mat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0x551100 });
-    for(let i=0; i<count; i++) {
+    for (let i = 0; i < count; i++) {
       const pos = this.getRandomPositionOnTerrain();
       const mesh = new THREE.Mesh(geom, mat);
       mesh.position.copy(pos).y += 0.5;
@@ -43,12 +43,12 @@ export class CreatureSystem {
   }
 
   createGeneration() {
-    while(this.mainGroup.children.length > 0) this.mainGroup.remove(this.mainGroup.children[0]);
+    while (this.mainGroup.children.length > 0) this.mainGroup.remove(this.mainGroup.children[0]);
     this.creatures = [];
     this.genetic.individuals.forEach((ind, index) => {
       const creature = createCreatureFromGenes(ind.genes, ind.brainGenome);
       const pos = this.getRandomPositionOnTerrain();
-      creature.x = pos.x; creature.y = pos.z; 
+      creature.x = pos.x; creature.y = pos.z;
       creature.mesh.position.set(pos.x, pos.y, pos.z);
       this.mainGroup.add(creature.mesh);
       this.creatures.push({ logic: creature, mesh: creature.mesh, index: index, fitness: 0 });
@@ -60,10 +60,11 @@ export class CreatureSystem {
     const halfSize = (this.config.worldSize / 2) - 2; // Marge de sécurité
     this.creatures.forEach(c => {
       const { logic, mesh } = c;
-      const target = this.getNearestFood(logic.x, logic.y);
+      const target = this.getNearestFood(c.logic.x, c.logic.y);
       logic.distanceFood = target ? target.dist : 100;
 
       logic.update(dt * 20);
+
 
       // --- CONSTRAINT: BLOCAGE AUX BORDURES ---
       logic.x = Math.max(-halfSize, Math.min(halfSize, logic.x));
@@ -76,12 +77,28 @@ export class CreatureSystem {
       mesh.rotation.y = -logic.angle;
 
       if (logic.energy <= 0) mesh.visible = false;
+      if (target) {
+        const food = this.foods[target.index];
+        c.logic.distanceFood = target.dist;
+
+        // --- CALCUL DE L'ANGLE RELATIF (Crucial !) ---
+        const dx = food.x - c.logic.x;
+        const dy = food.z - c.logic.y; // z est le y en 2D logic
+        const angleToTarget = Math.atan2(dy, dx);
+
+        // On calcule la différence entre l'angle de la nourriture et l'angle actuel du blob
+        let diff = angleToTarget - c.logic.angle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+
+        c.logic.angleToFood = diff; // Valeur entre -PI et PI
+      }
     });
   }
 
   getNearestFood(x, z) {
     let bestDist = Infinity; let bestIdx = -1;
-    for(let i=0; i<this.foods.length; i++) {
+    for (let i = 0; i < this.foods.length; i++) {
       if (!this.foods[i].active) continue;
       const d = Math.sqrt(Math.pow(this.foods[i].x - x, 2) + Math.pow(this.foods[i].z - z, 2));
       if (d < bestDist) { bestDist = d; bestIdx = i; }

@@ -93,115 +93,115 @@ export class Creature {
 
 
   // ============================================================
-  // CRÉATION DU MESH 3D 
-  // ============================================================
-  buildMeshFromGenes(genes) {
+// CRÉATION DU MESH 3D (STYLE ORGANIQUE / BLOB)
+// ============================================================
+buildMeshFromGenes(genes) {
     const group = new THREE.Group();
     group.userData.genes = genes.slice();
 
-    // map gènes → paramètres physiques
-    const bodyW = lerp(0.5, 3.0, genes[0]);
-    const bodyH = lerp(0.5, 3.0, genes[1]);
-    const bodyD = lerp(0.5, 3.0, genes[2]);
-    const headScale = lerp(0.3, 1.5, genes[3]);
-    const legLength = lerp(0.2, 2.5, genes[4]);
-    const legThick = lerp(0.05, 0.5, genes[5]);
-    const legCount = Math.max(2, Math.round(lerp(2, 8, genes[6])));
-    const antennaLen = lerp(0, 2.0, genes[7]);
-    const hue = genes[8];
-    const tilt = lerp(-0.6, 0.6, genes[9]);
+    // 1. Décodage des gènes pour le style organique
+    const size = lerp(0.5, 1.8, genes[0]);           // Taille globale
+    const squish = lerp(0.6, 1.4, genes[1]);         // Écrasement (forme ovale)
+    const hue = genes[2];                            // Couleur
+    const roughness = lerp(0.0, 0.6, genes[3]);      // Aspect gluant (0) ou mat (1)
+    const nucleusCount = Math.floor(lerp(1, 6, genes[4])); // Organes internes
+    const tentacleLen = lerp(0, 1.5, genes[5]);      // Longueur des tentacules
 
-    const color = new THREE.Color().setHSL(hue, 0.6, 0.5);
+    const mainColor = new THREE.Color().setHSL(hue, 1.0, 0.5);
+    const nucleusColor = new THREE.Color().setHSL((hue + 0.5) % 1, 0.8, 0.5); // Couleur complémentaire
 
-
-    // -----------------
-    // CORPS
-    // -----------------
-    const bodyGeo = new THREE.SphereGeometry(bodyW, 16, 12);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color, metalness: 0.2, roughness: 0.6
+    // 2. CORPS (Membrane gélatineuse)
+    // On utilise Icosahedron avec détail pour une sphère plus "naturelle"
+    const bodyGeo = new THREE.IcosahedronGeometry(size, 2); 
+    
+    // MeshPhysicalMaterial est la clé pour l'effet "Blob"
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: mainColor,
+        metalness: 0.1,
+        roughness: roughness,
+        transmission: 0.6,  // Transparence type verre/gelée
+        thickness: 1.5,     // Réfraction de la lumière
+        opacity: 0.8,
+        transparent: true,
+        clearcoat: 1.0,     // Couche de vernis (aspect mouillé)
+        clearcoatRoughness: 0.1
     });
+
     const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.scale.set(1, squish, 1); // Déforme la sphère
     body.castShadow = true;
-    body.receiveShadow = true;
     group.add(body);
 
-    // -----------------
-    // TÊTE
-    // -----------------
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(Math.min(bodyW, bodyH) * headScale * 0.45, 16, 12),
-      new THREE.MeshStandardMaterial({ color, metalness: 0.15, roughness: 0.6 })
-    );
-    head.position.set(0, bodyH*0.5 + (head.geometry.parameters.radius || 0.4)*0.9, 0);
-    group.add(head);
-
-    // -----------------
-    // JAMBES
-    // -----------------
-    const legsGroup = new THREE.Group();
-    const spacing = bodyW / (legCount+1);
-
-    for (let i=0;i<legCount;i++) {
-      const x = -bodyW*0.5 + spacing*(i+1);
-      const legGeo = new THREE.CylinderGeometry(legThick, legThick, legLength, 10);
-      const legMat = new THREE.MeshStandardMaterial({ color, metalness:0.1, roughness:0.7 });
-
-      const leg = new THREE.Mesh(legGeo, legMat);
-      leg.position.set(x, -bodyH*0.5 - legLength*0.5, bodyD*0.25);
-      leg.rotation.z = Math.PI/2 * 0.06 * (i%2?1:-1);
-      legsGroup.add(leg);
-
-      const leg2 = leg.clone();
-      leg2.position.z = -bodyD*0.25;
-      legsGroup.add(leg2);
-    }
-    group.add(legsGroup);
-
-    // -----------------
-    // ANTENNES
-    // -----------------
-    if (antennaLen > 0.05) {
-      const antMat = new THREE.MeshStandardMaterial({ color, metalness:0.1, roughness:0.7 });
-      const antGeom = new THREE.CylinderGeometry(0.03, 0.03, antennaLen, 8);
-
-      const a1 = new THREE.Mesh(antGeom, antMat);
-      const a2 = a1.clone();
-      a1.position.set(bodyW*0.2, bodyH*0.5 + antennaLen*0.5, bodyD*0.15);
-      a2.position.set(-bodyW*0.2, bodyH*0.5 + antennaLen*0.5, bodyD*0.15);
-      a1.rotation.x = -0.3; a2.rotation.x = -0.3;
-      group.add(a1, a2);
-    }
-
-    // -----------------
-    // YEUX
-    // -----------------
-    const eyeGeom = new THREE.SphereGeometry(Math.max(0.03, Math.min(0.12, headScale*0.06)), 8, 6);
-    const eyeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.05,0.05,0.05), metalness:0.1 });
-    const leftEye = new THREE.Mesh(eyeGeom, eyeMat);
-    const rightEye = leftEye.clone();
-
-    const eyeOff = (bodyW * 0.12) + headScale*0.02;
-    leftEye.position.set(-eyeOff, head.position.y, head.geometry.parameters.radius*0.4);
-    rightEye.position.set(eyeOff, head.position.y, head.geometry.parameters.radius*0.4);
-
-    group.add(leftEye, rightEye);
-
-    // posture
-    group.rotation.x = tilt;
-
-    // scale global
-    group.scale.setScalar(0.9);
-
-    // bounding spheres
-    group.traverse((m) => {
-      if (m.isMesh) {
-        m.geometry.computeBoundingSphere();
-      }
+    // 3. ORGANES INTERNES (Noyaux opaques flottants)
+    const nucleusGeo = new THREE.SphereGeometry(size * 0.2, 8, 8);
+    const nucleusMat = new THREE.MeshStandardMaterial({ 
+        color: nucleusColor, 
+        emissive: nucleusColor,
+        emissiveIntensity: 0.5,
+        roughness: 0.2 
     });
 
+    for(let i=0; i<nucleusCount; i++) {
+        const nuc = new THREE.Mesh(nucleusGeo, nucleusMat);
+        // Position aléatoire à l'intérieur du corps
+        nuc.position.set(
+            (Math.random()-0.5) * size * 0.8,
+            (Math.random()-0.5) * size * 0.8 * squish,
+            (Math.random()-0.5) * size * 0.8
+        );
+        // Rotation aléatoire pour varier
+        nuc.rotation.set(Math.random(), Math.random(), Math.random());
+        group.add(nuc);
+    }
+
+    // 4. YEUX (Sur la surface)
+    const eyeGeo = new THREE.SphereGeometry(size * 0.15, 16, 16);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    
+    const leftEye = new THREE.Group();
+    const lBall = new THREE.Mesh(eyeGeo, eyeMat);
+    const lPupil = new THREE.Mesh(new THREE.SphereGeometry(size*0.06), pupilMat);
+    lPupil.position.z = size*0.13;
+    leftEye.add(lBall, lPupil);
+    
+    const rightEye = leftEye.clone();
+
+    // Positionnement des yeux sur le devant
+    const eyeY = size * 0.3 * squish;
+    const eyeZ = size * 0.85;
+    const eyeX = size * 0.35;
+
+    leftEye.position.set(-eyeX, eyeY, eyeZ);
+    rightEye.position.set(eyeX, eyeY, eyeZ);
+    group.add(leftEye, rightEye);
+
+    // 5. TENTACULES (au lieu des jambes)
+    // On utilise une capsule allongée pour faire une traînée
+    if (tentacleLen > 0.1) {
+        const tentacleGeo = new THREE.CapsuleGeometry(size * 0.05, tentacleLen, 4, 8);
+        const tentacleMat = new THREE.MeshStandardMaterial({ color: mainColor });
+        
+        const tCount = Math.floor(size * 4); // Plus la créature est grosse, plus elle a de tentacules
+        for(let i=0; i<tCount; i++) {
+            const t = new THREE.Mesh(tentacleGeo, tentacleMat);
+            const angle = (i / tCount) * Math.PI * 2;
+            
+            t.position.set(
+                Math.cos(angle) * size * 0.5,
+                -size * 0.5 * squish, 
+                Math.sin(angle) * size * 0.5
+            );
+            
+            // Rotation pour qu'elles pendent un peu vers l'arrière
+            t.rotation.x = Math.PI / 4; 
+            t.rotation.y = angle;
+            group.add(t);
+        }
+    }
+
     return group;
-  }
+}
 }
 
 
