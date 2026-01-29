@@ -473,7 +473,7 @@ export class VegetationManager {
         
         // Variation de taille
         const scale = 0.6 + Math.random() * 0.4;
-        tree.scale.set(scale, scale, scale);
+        tree.scale.set(scale, 0.5, scale);
         
         this.scene.add(tree);
         this.vegetation.push(tree);
