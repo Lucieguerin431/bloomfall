@@ -7,7 +7,7 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { TerrainGenerator, createBloomfallTerrain } from './world/TerrainGenerator.js';
+import { TerrainGenerator, createBloomfallTerrain } from './world/biomes/terrainUtils/TerrainGenerator.js';
 import { VegetationManager } from './world/entities/systems/lsystem/lsystem.js'
 import { BoidsSystem, CreaturePresets } from './world/entities/boids/boidSystem.js';
 import { CreatureSystem } from './world/entities/neuralnetwork/CreatureSystem.js';
@@ -108,7 +108,6 @@ class BloomfallScene {
 
     // 8. UI & Events
     window.addEventListener('resize', () => this.onWindowResize());
-    this.displayTerrainInfo();
     this.createControlsUI(); // Bouton pour l'évolution
   }
 
@@ -175,17 +174,7 @@ class BloomfallScene {
     this.fillLight = fillLight;
   }
 
-  displayTerrainInfo() {
-    const infoDiv = document.createElement('div');
-    Object.assign(infoDiv.style, {
-        position: 'absolute', top: '10px', left: '10px',
-        backgroundColor: 'rgba(0, 0, 0, 0.7)', color: 'white',
-        padding: '15px', fontFamily: 'monospace', fontSize: '14px',
-        borderRadius: '5px', zIndex: '1000'
-    });
-    // infoDiv.innerHTML = `...`; 
-    document.body.appendChild(infoDiv);
-  }
+  
 
   // Interface simple pour contrôler l'évolution
   createControlsUI() {

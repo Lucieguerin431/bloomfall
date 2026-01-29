@@ -82,7 +82,7 @@ export class Creature {
     this.angle += outputs[0] * 0.1;
 
     // output[1] = accélération
-    this.speed += outputs[1] * 0.01;
+    this.speed += outputs[1] * 0.005;
 
     // Physique : on convertit l'angle + la vitesse scalaire
     // en vecteur vitesse (vx, vy) dans le plan.
