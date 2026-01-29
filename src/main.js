@@ -79,9 +79,10 @@ class BloomfallScene {
     // 5. Lumières
     this.setupLights();
 
-    // 6. Terrain
+    // 6. Terrain (size = zone d'action ; visualSize = extension visuelle pour masquer les bords)
     const terrainConfig = {
       size: 400,
+      visualSize: 1000,
       resolution: 128,
       heightScale: 100,
       seed: Math.random(),
@@ -104,7 +105,7 @@ class BloomfallScene {
     // 7. Écosystème
     this.setupVegetation(); // Arbres et fleurs
     this.setupBoids();      // Lucioles (boids)
-    this.setupCreatures();  // <--- NOUVEAU: Les créatures neuronales
+    this.setupCreatures();  //Les créatures neuronales
 
     // 8. UI & Events
     window.addEventListener('resize', () => this.onWindowResize());

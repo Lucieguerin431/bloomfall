@@ -99,7 +99,8 @@ class PerlinNoise {
 export class TerrainGenerator {
   constructor(config = {}) {
     this.config = {
-      size: config.size || 200,           // Taille du terrain
+      size: config.size || 200,           // Taille "logique" (zone d'action, heightmap, biomes)
+      visualSize: config.visualSize ?? config.size, // Taille visuelle du mesh (extension plate au-delà)
       resolution: config.resolution || 128, // Résolution (vertices)
       seed: config.seed || Math.random(),
       heightScale: config.heightScale || 25,
@@ -270,32 +271,53 @@ export class TerrainGenerator {
   }
 
   /**
-   * Crée la géométrie Three.js du terrain
+   * Crée la géométrie Three.js du terrain.
+   * Si visualSize > size, le mesh s'étend au-delà ; la zone au-delà de size est en pente douce (blend vers 0).
    */
   createTerrainGeometry() {
-    const { size, resolution } = this.config;
+    const { size, visualSize, resolution } = this.config;
     
-    // Générer les données si nécessaire
+    // Générer les données si nécessaire (heightmap pour la zone logique uniquement)
     if (!this.heightMap) {
       this.generateHeightMap();
     }
     
-    // Créer la géométrie plane
+    // Créer la géométrie plane à la taille visuelle
     const geometry = new THREE.PlaneGeometry(
-      size,
-      size,
+      visualSize,
+      visualSize,
       resolution - 1,
       resolution - 1
     );
     
-    // Appliquer les hauteurs
+    const halfSize = size / 2;
+    const blendWidth = Math.min(visualSize / 2 - halfSize, 150); // largeur de la pente en périphérie
+    
+    // Appliquer les hauteurs : zone centrale = heightmap, zone périphérique = blend vers 0
     const positions = geometry.attributes.position;
     for (let i = 0; i < positions.count; i++) {
-      const x = Math.floor(i % resolution);
-      const y = Math.floor(i / resolution);
-      const idx = y * resolution + x;
+      const gx = i % resolution;
+      const gy = Math.floor(i / resolution);
+      const worldX = (gx / (resolution - 1) - 0.5) * visualSize;
+      const worldZ = (gy / (resolution - 1) - 0.5) * visualSize;
       
-      positions.setZ(i, this.heightMap[idx]);
+      let height;
+      if (Math.abs(worldX) <= halfSize && Math.abs(worldZ) <= halfSize) {
+        height = this.getHeightAt(worldX, worldZ);
+      } else {
+        const edgeX = Math.max(-halfSize, Math.min(halfSize, worldX));
+        const edgeZ = Math.max(-halfSize, Math.min(halfSize, worldZ));
+        const edgeHeight = this.getHeightAt(edgeX, edgeZ);
+        const distOutside = Math.max(
+          Math.abs(worldX) - halfSize,
+          Math.abs(worldZ) - halfSize,
+          0
+        );
+        const t = Math.min(1, distOutside / blendWidth);
+        height = edgeHeight * (1 - t);
+      }
+      
+      positions.setZ(i, height);
     }
     
     // Rotation pour que le terrain soit horizontal
@@ -332,11 +354,13 @@ export class TerrainGenerator {
   }
 
   /**
-   * Applique des couleurs selon le biome et l'altitude
+   * Applique des couleurs selon le biome et l'altitude.
+   * Pour la zone visuelle étendue (au-delà de size), utilise une couleur plaines uniforme.
    */
   applyBiomeColors(geometry) {
-    const { resolution, heightScale } = this.config;
+    const { size, visualSize, resolution, heightScale } = this.config;
     const colors = new Float32Array(resolution * resolution * 3);
+    const halfSize = size / 2;
     
     // Couleurs pour les différents biomes/altitudes
     const mountainLow = new THREE.Color(0x8B7355);    // Marron rocheux
@@ -348,31 +372,42 @@ export class TerrainGenerator {
     const plainsLight = new THREE.Color(0x9FD356);    // Vert clair
     
     for (let i = 0; i < resolution * resolution; i++) {
-      const biomeFactor = this.biomeMap[i];
-      const height = this.heightMap[i];
-      const normalizedHeight = (height + heightScale) / (heightScale * 2);
+      const gx = i % resolution;
+      const gy = Math.floor(i / resolution);
+      const worldX = (gx / (resolution - 1) - 0.5) * visualSize;
+      const worldZ = (gy / (resolution - 1) - 0.5) * visualSize;
       
       let color;
-      
-      if (biomeFactor < 0.5) {
-        // Zone montagneuse
-        if (normalizedHeight > 0.7) {
-          color = mountainHigh;
-        } else if (normalizedHeight > 0.4) {
-          color = mountainMid;
+      if (Math.abs(worldX) <= halfSize && Math.abs(worldZ) <= halfSize) {
+        const gridX = Math.floor((worldX / size + 0.5) * resolution);
+        const gridZ = Math.floor((worldZ / size + 0.5) * resolution);
+        const cx = Math.max(0, Math.min(resolution - 1, gridX));
+        const cz = Math.max(0, Math.min(resolution - 1, gridZ));
+        const idx = cz * resolution + cx;
+        const biomeFactor = this.biomeMap[idx];
+        const height = this.heightMap[idx];
+        const normalizedHeight = (height + heightScale) / (heightScale * 2);
+        
+        if (biomeFactor < 0.5) {
+          if (normalizedHeight > 0.7) {
+            color = mountainHigh;
+          } else if (normalizedHeight > 0.4) {
+            color = mountainMid;
+          } else {
+            color = mountainLow;
+          }
         } else {
-          color = mountainLow;
+          const variation = this.perlin.noise(idx * 0.1, idx * 0.05);
+          if (variation > 0.3) {
+            color = plainsDark;
+          } else if (variation < -0.3) {
+            color = plainsLight;
+          } else {
+            color = plainsGrass;
+          }
         }
       } else {
-        // Zone plaines-forêts
-        const variation = this.perlin.noise(i * 0.1, i * 0.05);
-        if (variation > 0.3) {
-          color = plainsDark; // Zones forestières
-        } else if (variation < -0.3) {
-          color = plainsLight; // Clairières
-        } else {
-          color = plainsGrass; // Herbe normale
-        }
+        color = plainsGrass; // Extension visuelle : herbe uniforme
       }
       
       colors[i * 3] = color.r;

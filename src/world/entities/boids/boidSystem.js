@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { Creature } from './boid.js';
 
 export class BoidsSystem {
-  constructor(scene, terrainGenerator, count = 1000, options = {}) {
+  constructor(scene, terrainGenerator, count = 100, options = {}) {
     this.scene = scene;
     this.terrainGenerator = terrainGenerator;
     this.creatures = [];
