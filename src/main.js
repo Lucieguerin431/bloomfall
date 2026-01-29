@@ -128,7 +128,7 @@ class BloomfallScene {
     this.boidsSystem = new BoidsSystem(
       this.scene,
       this.terrainGenerator,
-      50,
+      100,
       CreaturePresets.default
     );
   }
