@@ -1,9 +1,12 @@
+/**
+ * "Creature" pour le système de boids : une luciole 3D qui survole le terrain.
+ *
+ * Elle connaît sa position, sa vitesse, et sait se recaler sur le relief
+ * (en appelant `terrainGenerator.getHeightAt`). Le vrai comportement de groupe
+ * (forces de séparation / alignement / cohésion) est calculé dans `BoidsSystem`.
+ */
 import * as THREE from "three";
 
-/**
- * Classe Creature : Représente une créature lumineuse (luciole) adaptée pour Bloomfall
- * Combinaison de votre code original Creature.js avec adaptation au terrain
- */
 export class Creature {
   constructor(terrainGenerator, options = {}) {
     this.terrainGenerator = terrainGenerator;

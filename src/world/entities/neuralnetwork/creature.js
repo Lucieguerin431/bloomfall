@@ -1,3 +1,16 @@
+/**
+ * Définition d'une créature "blob" contrôlée par un petit réseau de neurones.
+ *
+ * Chaque instance possède :
+ *  - des gènes (qui déterminent sa forme + couleur),
+ *  - un cerveau (réseau de neurones feed‑forward),
+ *  - un état physique 2D (x, y, vitesse, angle, énergie).
+ *
+ * La classe ne connaît pas le terrain ni la nourriture : elle se contente
+ * de lire des infos "d'environnement" (distance à la nourriture, etc.)
+ * et de mettre à jour sa position. C'est le `CreatureSystem` qui branche
+ * tout ça avec le reste du monde.
+ */
 import * as THREE from 'three';
 import { NeuralNetwork } from './NeuralNetwork.js';
 
@@ -15,8 +28,6 @@ export function genesDefault() {
   return g;
 }
 
-
-
 // ============================================================
 //  CLASSE CREATURE  (cerveau neuronal + update())
 // ============================================================
@@ -28,14 +39,14 @@ export class Creature {
     this.speed = 0;
     this.angle = 0;
 
-    // Position initiale
+    // Position initiale dans le plan 2D "logique" (le Y 3D sera géré ailleurs)
     this.x = 0;
     this.y = 0;
 
     // Création du mesh 3D depuis les gènes
     this.mesh = this.buildMeshFromGenes(genes);
 
-    // Création du réseau neuronal
+    // Création du réseau neuronal (petit MLP à 1 couche cachée)
     this.brain = new NeuralNetwork(
       5,   // nb inputs
       4,   // hidden
@@ -43,11 +54,12 @@ export class Creature {
       brainGenome // génome des poids 
     );
 
-    // Valeurs d'environnement 
+    // Valeurs d'environnement (remplies par le système externe avant chaque update)
     this.distanceFood = 0;
     this.distanceWall = 0;
     this.speedX = 0;
     this.speedY = 0;
+    
   }
 
 
@@ -72,7 +84,8 @@ export class Creature {
     // output[1] = accélération
     this.speed += outputs[1] * 0.01;
 
-    // Physique 
+    // Physique : on convertit l'angle + la vitesse scalaire
+    // en vecteur vitesse (vx, vy) dans le plan.
     const vx = Math.cos(this.angle) * this.speed;
     const vy = Math.sin(this.angle) * this.speed;
 
@@ -82,15 +95,14 @@ export class Creature {
     this.speedX = vx;
     this.speedY = vy;
 
-    // Mise à jour du mesh 
+    // Mise à jour du mesh (pour l'instant on laisse la hauteur à 0,
+    // la surélévation par rapport au terrain est gérée par CreatureSystem).
     this.mesh.position.set(this.x, 0, this.y);
     this.mesh.rotation.y = -this.angle;
 
     //  Energie dépensée 
     this.energy -= 0.02 + Math.abs(this.speed) * 0.002;
   }
-
-
 
   // ============================================================
 // CRÉATION DU MESH 3D (STYLE ORGANIQUE / BLOB)

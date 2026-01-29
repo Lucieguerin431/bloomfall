@@ -1,3 +1,10 @@
+/**
+ * Petit réseau de neurones "maison" de type feed‑forward (1 couche cachée).
+ *
+ * Objectif : avoir un cerveau très simple pour les blobs, sans dépendre
+ * d'une grosse librairie de ML. Tout est codé à la main : matrices de poids,
+ * produit matriciel, fonction d'activation, etc.
+ */
 // Classe représentant un réseau de neurones simple (feedforward 2 couches)
 export class NeuralNetwork {
 

@@ -1,8 +1,15 @@
+/**
+ * Système de "boids" (lucioles) qui volent au‑dessus du terrain en suivant
+ * les 3 grandes règles classiques : séparation, alignement, cohésion.
+ *
+ * Ici chaque boid est une petite créature lumineuse (classe `Creature` locale),
+ * et ce système s'occupe juste de lui appliquer les forces de groupe.
+ */
 import * as THREE from 'three';
 import { Creature } from './boid.js';
 
 export class BoidsSystem {
-  constructor(scene, terrainGenerator, count = 4000, options = {}) {
+  constructor(scene, terrainGenerator, count = 1000, options = {}) {
     this.scene = scene;
     this.terrainGenerator = terrainGenerator;
     this.creatures = [];

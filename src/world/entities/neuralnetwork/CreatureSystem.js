@@ -1,3 +1,12 @@
+/**
+ * Système de créatures "blob" contrôlées par un réseau de neurones
+ * + algorithme génétique pour faire évoluer leurs gènes au fil des générations.
+ * 
+ * Idée : on garde une population de blobs, chacun a des gènes + un cerveau.
+ * Ils se déplacent sur le terrain pour manger de la nourriture, ce qui augmente
+ * leur "fitness". À la fin d'une génération, on utilise cette fitness pour
+ * créer la génération suivante via crossover + mutation.
+ */
 import * as THREE from 'three';
 import Genetic from './genetique.js';
 import { createCreatureFromGenes } from './creature.js';
@@ -23,11 +32,17 @@ export class CreatureSystem {
     this.initLevel();
   }
 
+  /**
+   * Initialise un niveau : on pose la nourriture et on génère la première population.
+   */
   initLevel() {
     this.spawnFood(this.config.foodCount);
     this.createGeneration();
   }
 
+  /**
+   * Génère un certain nombre de "boules" de nourriture réparties sur le terrain.
+   */
   spawnFood(count) {
     while (this.foodGroup.children.length > 0) this.foodGroup.remove(this.foodGroup.children[0]);
     this.foods = [];
@@ -42,6 +57,10 @@ export class CreatureSystem {
     }
   }
 
+  /**
+   * Crée une nouvelle génération de créatures à partir de la population génétique actuelle.
+   * (appelé au lancement puis à chaque appel de nextGeneration())
+   */
   createGeneration() {
     while (this.mainGroup.children.length > 0) this.mainGroup.remove(this.mainGroup.children[0]);
     this.creatures = [];
@@ -56,6 +75,11 @@ export class CreatureSystem {
     });
   }
 
+  /**
+   * Boucle de mise à jour appelée à chaque frame.
+   * On laisse chaque créature réfléchir/marcher, puis on applique les règles
+   * (bordure du monde, manger la nourriture, etc.).
+   */
   update(dt) {
     const halfSize = (this.config.worldSize / 2) - 2; // Marge de sécurité
     this.creatures.forEach(c => {
@@ -63,7 +87,7 @@ export class CreatureSystem {
       const target = this.getNearestFood(c.logic.x, c.logic.y);
       logic.distanceFood = target ? target.dist : 100;
 
-      logic.update(dt * 20);
+      logic.update(dt * 5);
 
 
       // --- CONSTRAINT: BLOCAGE AUX BORDURES ---
@@ -73,7 +97,9 @@ export class CreatureSystem {
       if (target && target.dist < 1.5) this.eatFood(target.index, c);
 
       const groundHeight = this.terrainGenerator.getHeightAt(logic.x, logic.y);
-      mesh.position.set(logic.x, groundHeight, logic.y);
+      // Légère surélévation des créatures par rapport au sol
+      const hoverOffset = 3;
+      mesh.position.set(logic.x, groundHeight + hoverOffset, logic.y);
       mesh.rotation.y = -logic.angle;
 
       if (logic.energy <= 0) mesh.visible = false;

@@ -1,3 +1,11 @@
+/**
+ * Générateur de terrain "Bloomfall" : gère la heightmap, les biomes et les couleurs.
+ *
+ * L'idée est de combiner du bruit de type Perlin multi‑octaves avec une carte de biomes
+ * (montagnes au centre, plaines/forêts vers l'extérieur) pour produire un grand mesh
+ * de terrain cohérent. Le code fournit aussi des helpers pour récupérer la hauteur
+ * ou le biome à une position (utilisé par les créatures, la végétation, etc.).
+ */
 import * as THREE from 'three';
 
 /**

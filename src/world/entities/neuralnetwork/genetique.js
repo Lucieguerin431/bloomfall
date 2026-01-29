@@ -1,8 +1,14 @@
-/*
-  Classe Genetic qui gère toute la logique de l’algorithme génétique.
-  Elle stocke la population, applique crossover, mutation, et génère les nouvelles générations.
-*/
-
+/**
+ * Petit module "Genetic" qui implémente un algorithme génétique basique.
+ *
+ * Il ne sait rien de Three.js ni des créatures : il ne manipule que des tableaux
+ * de gènes (nombres entre 0 et 1). On lui donne une taille de population + un
+ * nombre de gènes, et il fournit des fonctions pour :
+ *  - initialiser une population aléatoire,
+ *  - combiner deux parents (crossover),
+ *  - muter les gènes,
+ *  - produire la génération suivante à partir d'un ensemble d'indices "sélectionnés".
+ */
 export default class Genetic {
   constructor(populationSize = 24, geneCount = 10) {
     this.populationSize = populationSize; // taille de la population

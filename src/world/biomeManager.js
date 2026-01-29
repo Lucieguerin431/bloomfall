@@ -1,3 +1,9 @@
+/**
+ * Gestionnaire de "biomes" très simple : on instancie plusieurs types de biomes
+ * (montagne, désert, plaine, forêt) dans une grille, puis on relaye leur update.
+ *
+ * Chaque biome renvoie un petit objet avec au moins un mesh + une méthode update().
+ */
 import { Group } from 'three';
 import { createMountainsBiome } from './biomes/mountains.js';
 import { createDesertBiome } from './biomes/desert.js';

@@ -1,3 +1,10 @@
+/**
+ * Fichier principal qui monte toute la scène Bloomfall dans le navigateur.
+ *
+ * Ici on installe Three.js (caméra, renderer, lumières), on génère le terrain,
+ * puis on branche tous les "systèmes" du monde : végétation L‑system, lucioles (boids),
+ * et créatures neuronales avec algorithme génétique. C'est un peu le "main" du projet.
+ */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { TerrainGenerator, createBloomfallTerrain } from './world/TerrainGenerator.js';
@@ -24,6 +31,20 @@ class BloomfallScene {
     
     // Time
     this.clock = new THREE.Clock();
+
+    // Gestion des générations automatiques
+    this.currentGeneration = 1;
+    // 1 jour = 1 minute dans notre simulation
+    this.generationDuration = 30;   // durée d'une génération/journée (en secondes)
+    this.generationElapsed = 0;     // temps écoulé dans la génération courante
+    this.generationInfoDiv = null;  // élément UI pour afficher les infos
+
+    // Paramètres du cycle jour/nuit
+    this.ambientLight = null;
+    this.sunLight = null;
+    this.fillLight = null;
+    this.daySkyColor = new THREE.Color(0x87CEEB);   // ciel bleu clair
+    this.nightSkyColor = new THREE.Color(0x020518); // nuit profonde
 
     this.init();
     this.animate();
@@ -129,6 +150,7 @@ class BloomfallScene {
   setupLights() {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambientLight);
+    this.ambientLight = ambientLight;
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
     sunLight.position.set(50, 100, 50);
@@ -145,10 +167,12 @@ class BloomfallScene {
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     this.scene.add(sunLight);
+    this.sunLight = sunLight;
 
     const fillLight = new THREE.DirectionalLight(0xadd8e6, 0.2);
     fillLight.position.set(-50, 50, -50);
     this.scene.add(fillLight);
+    this.fillLight = fillLight;
   }
 
   displayTerrainInfo() {
@@ -165,8 +189,9 @@ class BloomfallScene {
 
   // Interface simple pour contrôler l'évolution
   createControlsUI() {
+    // Bouton optionnel pour forcer le passage à la génération suivante
     const btn = document.createElement('button');
-    btn.textContent = "Next Generation >>";
+    btn.textContent = "Next Gen";
     Object.assign(btn.style, {
         position: 'absolute', top: '10px', right: '10px',
         padding: '10px 20px', fontSize: '16px', cursor: 'pointer',
@@ -175,9 +200,30 @@ class BloomfallScene {
     });
     
     btn.onclick = () => {
-        if(this.creatureSystem) this.creatureSystem.nextGeneration();
+        if(this.creatureSystem) {
+          this.creatureSystem.nextGeneration();
+          this.currentGeneration++;
+          this.generationElapsed = 0;
+        }
     };
     document.body.appendChild(btn);
+
+    // Affichage du temps restant avant la prochaine génération
+    const genInfo = document.createElement('div');
+    Object.assign(genInfo.style, {
+        position: 'absolute', bottom: '10px', left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '8px 14px',
+        fontSize: '14px',
+        fontFamily: 'monospace',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        color: 'white',
+        borderRadius: '4px',
+        zIndex: '1000'
+    });
+    genInfo.textContent = `Génération ${this.currentGeneration} — prochaine dans ${this.generationDuration}s`;
+    document.body.appendChild(genInfo);
+    this.generationInfoDiv = genInfo;
   }
 
   onWindowResize() {
@@ -199,9 +245,49 @@ class BloomfallScene {
       this.boidsSystem.update(delta);
     }
 
-    // Update Créatures Algogen
+    // Update Créatures Algogen + gestion auto des générations
     if (this.creatureSystem) {
         this.creatureSystem.update(delta);
+
+        // Avancement du temps de génération
+        this.generationElapsed += delta;
+
+        // Passage automatique à la génération suivante
+        if (this.generationElapsed >= this.generationDuration) {
+          this.creatureSystem.nextGeneration();
+          this.currentGeneration++;
+          this.generationElapsed = 0;
+        }
+
+        // Mise à jour de l'UI d'information (temps restant)
+        if (this.generationInfoDiv) {
+          const remaining = Math.max(0, Math.ceil(this.generationDuration - this.generationElapsed));
+          this.generationInfoDiv.textContent =
+            `Génération ${this.currentGeneration} — prochaine dans ${remaining}s`;
+        }
+
+        // --- Cycle jour/nuit : 1 génération = 1 journée ---
+        const t = Math.min(1, this.generationElapsed / this.generationDuration); // 0 (matin) -> 1 (nuit)
+        const dayFactor = 1 - Math.pow(t, 0.7); // 1 au début, 0 à la fin
+
+        // Ciel & brouillard
+        if (this.scene && this.scene.fog) {
+          const skyColor = new THREE.Color();
+          skyColor.lerpColors(this.nightSkyColor, this.daySkyColor, dayFactor);
+          this.scene.background = skyColor;
+          this.scene.fog.color.copy(skyColor);
+        }
+
+        // Intensité des lumières
+        if (this.ambientLight) {
+          this.ambientLight.intensity = 0.15 + 0.25 * dayFactor; // 0.4 -> 0.15
+        }
+        if (this.sunLight) {
+          this.sunLight.intensity = 0.2 + 0.8 * dayFactor;       // 1.0 -> 0.2
+        }
+        if (this.fillLight) {
+          this.fillLight.intensity = 0.1 + 0.3 * dayFactor;      // 0.4 -> 0.1
+        }
     }
 
     this.renderer.render(this.scene, this.camera);

@@ -1,3 +1,14 @@
+/**
+ * Module L-System : génération procédurale de plantes / arbres à partir de chaînes.
+ *
+ * On décrit une "grammaire" (axiome + règles) puis on la fait évoluer pour
+ * obtenir une longue chaîne de symboles. Cette chaîne est ensuite interprétée
+ * comme des commandes de tortue 3D pour construire un mesh.
+ *
+ * Dans Bloomfall, ce système est utilisé pour tout ce qui est végétation :
+ * arbres, buissons, herbes hautes, fleurs, etc. Les presets à la fin du fichier
+ * regroupent plusieurs styles prêts à l'emploi.
+ */
 import * as THREE from 'three';
 
 /**
@@ -407,23 +418,52 @@ export class VegetationManager {
   }
 
   /**
-   * Place de la végétation aléatoire dans les plaines uniquement
+   * Place de la végétation aléatoire dans les plaines uniquement.
+   * 
+   * Pour les arbres, on essaye de créer des "paquets" (forêts) en tirant
+   * d'abord quelques centres de forêt, puis en positionnant les arbres
+   * autour de ces centres.
    */
   populate(config = {}) {
     const {
-      numTrees = 100,
+      numTrees = 300,
       numBushes = 150,
       numGrass = 300,
       numFlowers = 200,
       minDistanceFromMountains = 10, // Distance minimale des montagnes
+      numForests = 4,                // Nombre de "taches" de forêt
+      forestRadius = 20,             // Rayon moyen d'une forêt
     } = config;
 
     // Effacer la végétation existante
     this.clear();
 
-    // Arbres
+    // --- Arbres : on génère d'abord des centres de "forêt" puis on
+    // place les arbres autour de ces centres pour obtenir des paquets. ---
+
+    // Centres de forêt (dans les plaines, loin de la montagne)
+    const forestCenters = [];
+    for (let i = 0; i < numForests; i++) {
+      const center = this.getRandomPlainsPosition(minDistanceFromMountains);
+      if (center) {
+        forestCenters.push(center);
+      }
+    }
+
+    // Placement des arbres autour des centres
     for (let i = 0; i < numTrees; i++) {
-      const position = this.getRandomPlainsPosition(minDistanceFromMountains);
+      let position = null;
+
+      if (forestCenters.length > 0) {
+        const center = forestCenters[Math.floor(Math.random() * forestCenters.length)];
+        position = this.getRandomPlainsPositionAround(center, forestRadius, minDistanceFromMountains);
+      }
+
+      // fallback : si on n'a pas réussi à placer autour d'un centre
+      if (!position) {
+        position = this.getRandomPlainsPosition(minDistanceFromMountains);
+      }
+
       if (position) {
         const tree = this.createRandomTree();
         tree.position.copy(position);
@@ -432,7 +472,7 @@ export class VegetationManager {
         tree.rotation.y = Math.random() * Math.PI * 2;
         
         // Variation de taille
-        const scale = 0.8 + Math.random() * 0.4;
+        const scale = 0.6 + Math.random() * 0.4;
         tree.scale.set(scale, scale, scale);
         
         this.scene.add(tree);
@@ -518,6 +558,39 @@ export class VegetationManager {
     }
 
     return null; // Impossible de trouver une position valide
+  }
+
+  /**
+   * Variante de getRandomPlainsPosition : essaie de rester dans un disque
+   * autour d'un centre donné (pour créer des "paquets" de végétation),
+   * tout en respectant la contrainte "plaines uniquement, pas montagne".
+   */
+  getRandomPlainsPositionAround(center, radius, minDistanceFromMountains = 10) {
+    const { size } = this.terrainGenerator.config;
+    const maxAttempts = 40;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * radius;
+
+      const x = center.x + Math.cos(angle) * dist;
+      const z = center.z + Math.sin(angle) * dist;
+
+      const biome = this.terrainGenerator.getBiomeAt(x, z);
+
+      if (biome === 'plains') {
+        // Vérifier la distance des montagnes comme dans getRandomPlainsPosition
+        const distanceFromCenter = Math.sqrt(x * x + z * z);
+        const centerRadius = size * 0.3;
+
+        if (distanceFromCenter > centerRadius + minDistanceFromMountains) {
+          const y = this.terrainGenerator.getHeightAt(x, z);
+          return new THREE.Vector3(x, y, z);
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
